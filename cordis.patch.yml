@@ -1,0 +1,4 @@
+# dsh-canvas — bundle patch：插入画布工作流插件（host 路由 + client 画布 UI）。
+- insert:
+    - id: canvas
+      name: 'dsh-canvas'
