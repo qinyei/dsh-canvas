@@ -1,6 +1,6 @@
 {
   "name": "dsh-canvas",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "给 DSH 加一个类 n8n / Dify 的可视化画布工作流：拖节点、连线、点运行、节点实时高亮。外壳自研，引擎用内核现成的 workflow 服务。",
   "type": "module",

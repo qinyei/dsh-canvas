@@ -42,13 +42,49 @@
 |---|---|
 | DSH **0.2.x** | 引擎用的是**内核自带**的 `workflow` / `subagents` / `agents` 服务；本插件不自带引擎 |
 | Node.js | 跑自检脚本，以及图像节点要调的外部脚本 |
-| （可选）`~/.dsh/image-edit.mjs` | **图像节点（`image` / `edit`）必须有它** —— 节点本质是「带固定剧本的子代理」，去执行这个外部脚本来出图/改图。没有它时画布**其余节点照常可用**，只是图像节点会失败 |
+| 图像 API 钥匙（仅图像节点需要）| 文生图要 `ZHIPU_API_KEY`，改图要 `DASHSCOPE_API_KEY`（或 `MODELSCOPE_API_KEY`）。**两个脚本已随本包分发**，不用自己准备 —— 见下「🔓 完整功能解锁」 |
 
-- **图像节点的凭据属于你自己的环境**（例如百炼千问的 `DASHSCOPE_API_KEY`，由那个外部脚本自己读取），**不要写进插件目录**。
 - **产物缩略图白名单**：`/asset` 只允许读白名单目录里的图片，默认是
   `~/.dsh/plugin-data/dsh-canvas/images`、`D:\dsh-media\images`、`D:\dsh-media\edits`、`D:\dsh-work\qwen-image-edit\out`。
   你的产物目录不一样就用环境变量覆盖（多个路径用系统分隔符，Windows 是 `;`）：
   `DSH_CANVAS_ASSET_ROOTS=路径A;路径B`
+
+---
+
+## 🔓 完整功能解锁
+
+**开箱可用**：装完就能拖节点、连线、点运行、对画布说话生成工作流、用人工审批门 —— 引擎是内核自带的，**这部分零配置**。
+
+**只有「图像节点」需要解锁。** 它在编译期会被翻译成「让子代理去执行一个本机脚本」，所以得给脚本配钥匙：
+
+| 节点 | 干什么 | 走哪个脚本 | 要哪把钥匙 |
+|---|---|---|---|
+| `image`（文生图）| 按提示词出图 | 包内 `lib/gen-image.mjs`（智谱 BigModel）| **`ZHIPU_API_KEY`** |
+| `edit`（改图）| 拿参考图改 | 包内 `lib/image-edit.mjs` → `dashscope`（默认，快枪手）| **`DASHSCOPE_API_KEY`**（阿里百炼）|
+| `edit` + 把 provider 改成 `modelscope` | 同上，免费但要排队 | 魔搭 `Qwen/Qwen-Image-Edit-2509` | `MODELSCOPE_API_KEY` |
+
+**两个脚本已经随插件分发**（旧版要你自己往 `~/.dsh/` 放 —— 现在不用了）：
+
+- 插件**优先用你自己那份** `~/.dsh/image-edit.mjs` / `~/.dsh/gen-image.mjs`，没有才用**包内副本** —— 不会覆盖或绕过你改过的东西。
+- 包内副本做过**可移植化**：默认产物目录是 `~/.dsh/plugin-data/dsh-canvas/images`（不再是写死的 `D:\dsh-media\images`），可用 `DSH_IMAGE_DIR` 覆盖。
+
+**配钥匙**（Windows 用户级环境变量，配一次长期有效）：
+
+```powershell
+setx ZHIPU_API_KEY "你的智谱 key"        # 文生图节点必需
+setx DASHSCOPE_API_KEY "你的百炼 key"    # 改图节点必需（默认 provider）
+```
+
+> 脚本从**进程环境变量**或**用户级环境变量**读取，**不回显、不落盘**；凭据属于你自己的环境，**不要写进插件目录**。
+> 配完要**重启 DSH**（它启动时才读环境变量）。
+
+**自检**（确认钥匙通了）：
+
+```bash
+node lib/image-edit.mjs providers     # 打印哪家钥匙在、端点通不通
+```
+
+**顶多再调一处**：产物缩略图白名单 `DSH_CANVAS_ASSET_ROOTS`（见上一节）—— 只有当你把图像节点产物输出到别的目录时才需要。
 
 ---
 
@@ -197,6 +233,8 @@ Host 用**两层 `inject`**：第一层只依赖 `webServer`（基础路由永�
 | `lib/generate.js` | 「✨ AI 生成工作流」的纯函数：提示词、脚本构造、抠 JSON、规整 + 自动布局 |
 | `lib/client.js` | **浏览器半边**：classic-script bundle，经 `__ModuleLoader__.load` 注册的画布 UI |
 | `cordis.patch.yml` | 给 DSH 的 **bundle patch**：把本插件 insert 进组合树（见「📦 安装」第 3 步）|
+| `lib/image-edit.mjs` | 「出图 / 改图」脚本（**随包分发**）：`edit` 走百炼或魔搭，`gen` 转给下面那个 |
+| `lib/gen-image.mjs` | 「文生图」脚本（**随包分发**）：走智谱 BigModel |
 
 ---
 
